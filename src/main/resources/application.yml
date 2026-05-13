@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: kieran-ai-agent
+  profiles:
+    active: local  # 默认激活本地配置
+  #pgsql数据库配置
+  datasource:
+    # 注意：这里写本地地址或假地址，而非公网真实 IP
+    url: jdbc:postgresql://127.0.0.1:5432/kieran_ai_agent
+    driver-class-name: org.postgresql.Driver
+  ai:
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        dimensions: 1536
+        distance-type: COSINE_DISTANCE
+        max-document-batch-size: 10000
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+
+# springdoc-openapi ??????
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: pers.kieran.study.kieranaiagent.controller
+# knife4j ???????????????
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+#logging:
+#  level:
+#    org.springframework.ai.chat.client.advisor.SimpleloggerAdvisor: debug

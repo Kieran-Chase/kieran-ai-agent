@@ -17,5 +17,4 @@ public class LangChainAiInvoke {
         String answer=qwenChatModel.chat("我是Kieran，正在学习langChain4j框架");
         System.out.println(answer);
     }
-
 }

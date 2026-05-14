@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
 import pers.kieran.study.kieranaiagent.advisor.MyLoggerAdvisor;
 import pers.kieran.study.kieranaiagent.advisor.ReReadingAdvisor;
 import pers.kieran.study.kieranaiagent.chatmemory.FileBasedChatMemory;
+import pers.kieran.study.kieranaiagent.rag.LoveAppRagCustomAdvisorFactory;
+import pers.kieran.study.kieranaiagent.rag.QueryRewriter;
 
 import java.util.List;
 
@@ -114,21 +116,33 @@ public class LoveApp {
     @Resource
     private VectorStore pgVectorVectorStore;
 
+    @Resource
+    private QueryRewriter queryRewriter;
+
     public String doChatWithRag(String message,String chatId){
+        //查询重写
+        String rewrittenMessage=queryRewriter.doQueryRewrite(message);
         ChatResponse chatResponse=chatClient
                 .prompt()
-                .user(message)
+                // 使用改写后的查询
+                .user(rewrittenMessage)
                 //1.配置记忆拦截器:让AI记得以前聊过什么
                 .advisors(spec->spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
                         .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY,10))//记住最近的10条上下文
                 //2.开启日志拦截器:方便我们在控制台观察原始请求和回复
                 .advisors(new MyLoggerAdvisor())
                 //3.应用 RAG 知识库问答拦截器：这是最核心的“外挂知识库”逻辑
-                //.advisors(new QuestionAnswerAdvisor(loveAppVectorStore))
+                .advisors(new QuestionAnswerAdvisor(loveAppVectorStore))
                 // 应用 RAG 检索增强服务(基于云知识库服务)
-                //.advisors(loveAppRagCloudAdvisor)
+//                .advisors(loveAppRagCloudAdvisor)
                 // 应用 RAG 检索增强服务(基于 PgVector 向量存储)
-                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
+//                .advisors(new QuestionAnswerAdvisor(pgVectorVectorStore))
+                // 应用自定义的 RAG 检索增强服务(文档查询器 + 上下文增强器)
+              /* .advisors(
+                        LoveAppRagCustomAdvisorFactory.createLoveAppRagCustomAdvisor(
+                                loveAppVectorStore,"单身"
+                        )
+                )*/
                 .call()
                 .chatResponse();
         //复杂的响应对象中提取纯文本回复

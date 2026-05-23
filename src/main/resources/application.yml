@@ -40,3 +40,10 @@ knife4j:
 #logging:
 #  level:
 #    org.springframework.ai.chat.client.advisor.SimpleloggerAdvisor: debug
+# searchAPI
+search-api:
+  api-key: "apikey"
+
+# Unsplash 秘钥处理
+unsplash:
+  access-key: "access-key"

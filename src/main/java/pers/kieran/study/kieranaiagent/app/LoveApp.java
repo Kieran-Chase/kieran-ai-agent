@@ -11,14 +11,18 @@ import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import pers.kieran.study.kieranaiagent.advisor.MyLoggerAdvisor;
 import pers.kieran.study.kieranaiagent.advisor.ReReadingAdvisor;
 import pers.kieran.study.kieranaiagent.chatmemory.FileBasedChatMemory;
 import pers.kieran.study.kieranaiagent.rag.LoveAppRagCustomAdvisorFactory;
 import pers.kieran.study.kieranaiagent.rag.QueryRewriter;
+import pers.kieran.study.kieranaiagent.tools.FileOperationTool;
+import pers.kieran.study.kieranaiagent.tools.UnsplashSearchTool;
 
 import java.util.List;
 
@@ -148,6 +152,34 @@ public class LoveApp {
         //复杂的响应对象中提取纯文本回复
         String content=chatResponse.getResult().getOutput().getText();
         log.info("content:{}",content);
+        return content;
+    }
+
+    // AI 调用工具能力
+    @Resource
+    private ToolCallback[] allTools;
+
+
+    /**
+     * AI 恋爱报告功能(支持调用工具)
+     * @param message
+     * @param chatId
+     * @return
+     */
+
+    public String doChatWithTools(String message, String chatId) {
+        ChatResponse response = chatClient
+                .prompt()
+                .user(message)
+                .advisors(spec -> spec.param(CHAT_MEMORY_CONVERSATION_ID_KEY, chatId)
+                        .param(CHAT_MEMORY_RETRIEVE_SIZE_KEY, 10))
+                // 开启日志，便于观察效果
+                .advisors(new MyLoggerAdvisor())
+                .tools(allTools)
+                .call()
+                .chatResponse();
+        String content = response.getResult().getOutput().getText();
+        log.info("content: {}", content);
         return content;
     }
 

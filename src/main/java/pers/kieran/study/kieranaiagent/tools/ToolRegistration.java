@@ -30,6 +30,7 @@ public class ToolRegistration {
         TerminalOperationTool terminalOperationTool = new TerminalOperationTool();
         PDFGenerationTool pdfGenerationTool = new PDFGenerationTool();
         UnsplashSearchTool unsplashSearchTool = new UnsplashSearchTool();
+        TerminateTool terminateTool = new TerminateTool();
         return ToolCallbacks.from(
                 fileOperationTool,
                 webSearchTool,
@@ -37,7 +38,8 @@ public class ToolRegistration {
                 resourceDownloadTool,
                 terminalOperationTool,
                 pdfGenerationTool,
-                unsplashSearchTool
+                unsplashSearchTool,
+                terminateTool
         );
     }
 }

@@ -22,16 +22,17 @@ public class ToolRegistration {
     private String searchApiKey;
 
     @Bean
-    public ToolCallback[] allTools() {
+    public ToolCallback[] allTools(UnsplashSearchTool unsplashSearchTool) {
         FileOperationTool fileOperationTool = new FileOperationTool();
         WebSearchTool webSearchTool = new WebSearchTool(searchApiKey);
         WebScrapingTool webScrapingTool = new WebScrapingTool();
         ResourceDownloadTool resourceDownloadTool = new ResourceDownloadTool();
         TerminalOperationTool terminalOperationTool = new TerminalOperationTool();
         PDFGenerationTool pdfGenerationTool = new PDFGenerationTool();
-        UnsplashSearchTool unsplashSearchTool = new UnsplashSearchTool();
         TerminateTool terminateTool = new TerminateTool();
+        AITools aiTools = new AITools();
         return ToolCallbacks.from(
+                aiTools,
                 fileOperationTool,
                 webSearchTool,
                 webScrapingTool,
@@ -42,4 +43,5 @@ public class ToolRegistration {
                 terminateTool
         );
     }
+
 }

@@ -76,8 +76,15 @@ public class ToolCallAgent extends ReActAgent {
         List<Message> messageList = getMessageList();
         Prompt prompt = new Prompt(messageList, this.chatOptions);
         try {
-            ChatResponse chatResponse = getChatClient().prompt(prompt)
+            /*ChatResponse chatResponse = getChatClient().prompt(prompt)
                     .system(getSystemPrompt())
+                    .call()
+                    .chatResponse();*/
+            //把 Manus 的第一轮思考改成 Spring AI 内置工具调用，不再手动等 getToolCalls() 后自己执行
+            ChatResponse chatResponse = getChatClient().prompt()
+                    .system(getSystemPrompt())
+                    .messages(messageList)
+                    .tools(availableTools)
                     .call()
                     .chatResponse();
             // 记录响应，用于等下 Act
@@ -95,13 +102,21 @@ public class ToolCallAgent extends ReActAgent {
                     .map(toolCall -> String.format("工具名称：%s，参数：%s", toolCall.name(), toolCall.arguments()))
                     .collect(Collectors.joining("\n"));
             log.info(toolCallInfo);
-            // 如果不需要调用工具，返回 false
+            /*// 如果不需要调用工具，返回 false
             if (toolCallList.isEmpty()) {
                 // 只有不调用工具时，才需要手动记录助手消息
                 getMessageList().add(assistantMessage);
                 return false;
             } else {
                 // 需要调用工具时，无需记录助手消息，因为调用工具时会自动记录
+                return true;
+            }*/
+            //后面的无工具逻辑改一下，避免一直循环 20 次
+            if (toolCallList.isEmpty()) {
+                getMessageList().add(assistantMessage);
+                setState(AgentState.FINISHED);
+                return false;
+            } else {
                 return true;
             }
         } catch (Exception e) {

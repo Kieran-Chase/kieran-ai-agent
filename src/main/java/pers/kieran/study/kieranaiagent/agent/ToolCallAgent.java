@@ -5,9 +5,9 @@ import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.ChatOptions;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.tool.ToolCallback;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 
 /**
  * @author Kieran_Chase
@@ -53,11 +53,12 @@ public class ToolCallAgent extends ReActAgent {
         super();
         this.availableTools = availableTools;
         this.toolCallingManager = ToolCallingManager.builder().build();
-        // 禁用 Spring AI 内置的工具调用机制，自己维护选项和消息上下文
-        this.chatOptions = ToolCallingChatOptions.builder()
-                .toolCallbacks(List.of(availableTools))
-                .internalToolExecutionEnabled(false)
+        // 使用 DashScope 专用配置传递工具 schema；开启 ProxyToolCalls，避免 DashScopeChatModel 自动 handleToolCalls 后递归请求模型。
+        this.chatOptions = DashScopeChatOptions.builder()
+                .withFunctionCallbacks(List.of(availableTools))
+                .withProxyToolCalls(true)
                 .build();
+
     }
 
     /**
@@ -76,15 +77,8 @@ public class ToolCallAgent extends ReActAgent {
         List<Message> messageList = getMessageList();
         Prompt prompt = new Prompt(messageList, this.chatOptions);
         try {
-            /*ChatResponse chatResponse = getChatClient().prompt(prompt)
+            ChatResponse chatResponse = getChatClient().prompt(prompt)
                     .system(getSystemPrompt())
-                    .call()
-                    .chatResponse();*/
-            //把 Manus 的第一轮思考改成 Spring AI 内置工具调用，不再手动等 getToolCalls() 后自己执行
-            ChatResponse chatResponse = getChatClient().prompt()
-                    .system(getSystemPrompt())
-                    .messages(messageList)
-                    .tools(availableTools)
                     .call()
                     .chatResponse();
             // 记录响应，用于等下 Act

@@ -23,10 +23,14 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import pers.kieran.study.kieranaiagent.agent.model.AgentState;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -116,7 +120,11 @@ public class ToolCallAgent extends ReActAgent {
         } catch (Exception e) {
             log.error(getName() + "的思考过程遇到了问题：" + e.getMessage());
             getMessageList().add(new AssistantMessage("处理时遇到了错误：" + e.getMessage()));
-            return false;
+            setState(AgentState.ERROR);
+            if (e instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new RuntimeException(e);
         }
     }
 
@@ -134,8 +142,10 @@ public class ToolCallAgent extends ReActAgent {
         Prompt prompt = new Prompt(getMessageList(), this.chatOptions);
         ToolExecutionResult toolExecutionResult = toolCallingManager.executeToolCalls(prompt, toolCallChatResponse);
         // 记录消息上下文，conversationHistory 已经包含了助手消息和工具调用返回的结果
-        setMessageList(toolExecutionResult.conversationHistory());
         ToolResponseMessage toolResponseMessage = (ToolResponseMessage) CollUtil.getLast(toolExecutionResult.conversationHistory());
+        // Keep compact tool results in model memory to reduce timeout risk.
+        // The original tool response is still returned to SSE for frontend rendering.
+        setMessageList(compactToolConversationHistory(toolExecutionResult.conversationHistory(), toolResponseMessage));
         // 判断是否调用了终止工具
         boolean terminateToolCalled = toolResponseMessage.getResponses().stream()
                 .anyMatch(response -> response.name().equals("doTerminate"));
@@ -149,4 +159,102 @@ public class ToolCallAgent extends ReActAgent {
         log.info(results);
         return results;
     }
+
+    /**
+     * Compact large tool outputs before writing them back into model context.
+     * This keeps the full SSE payload for the frontend while reducing model timeout risk.
+     */
+    private List<Message> compactToolConversationHistory(List<Message> conversationHistory,
+                                                          ToolResponseMessage originalToolResponseMessage) {
+        List<Message> compactHistory = new ArrayList<>(conversationHistory.size());
+        for (Message message : conversationHistory) {
+            if (message instanceof AssistantMessage assistantMessage && assistantMessage.hasToolCalls()) {
+                compactHistory.add(compactAssistantToolCalls(assistantMessage));
+            } else {
+                compactHistory.add(message);
+            }
+        }
+
+        List<ToolResponseMessage.ToolResponse> compactResponses = originalToolResponseMessage.getResponses().stream()
+                .map(response -> new ToolResponseMessage.ToolResponse(
+                        response.id(),
+                        response.name(),
+                        compactToolResponse(response.name(), response.responseData())
+                ))
+                .toList();
+        ToolResponseMessage compactToolResponseMessage = new ToolResponseMessage(compactResponses);
+        compactHistory.set(compactHistory.size() - 1, compactToolResponseMessage);
+        return compactHistory;
+    }
+
+    private AssistantMessage compactAssistantToolCalls(AssistantMessage assistantMessage) {
+        List<AssistantMessage.ToolCall> compactToolCalls = assistantMessage.getToolCalls().stream()
+                .map(toolCall -> new AssistantMessage.ToolCall(
+                        toolCall.id(),
+                        toolCall.type(),
+                        toolCall.name(),
+                        compactToolArguments(toolCall.name(), toolCall.arguments())
+                ))
+                .toList();
+        return new AssistantMessage(assistantMessage.getText(), assistantMessage.getMetadata(), compactToolCalls,
+                assistantMessage.getMedia());
+    }
+
+    private String compactToolArguments(String toolName, String arguments) {
+        if (arguments == null) {
+            return "{}";
+        }
+        if ("writeFile".equals(toolName) || "generatePDF".equals(toolName)) {
+            return "{\"_memoryNote\":\"large file/PDF content omitted after successful tool execution\"}";
+        }
+        if (arguments.length() > 1200) {
+            return "{\"_memoryNote\":\"large tool arguments omitted after successful tool execution\"}";
+        }
+        return arguments;
+    }
+
+    private String compactToolResponse(String toolName, String responseData) {
+        if (responseData == null) {
+            return "";
+        }
+        String text = responseData;
+        int maxLength = switch (toolName) {
+            case "scrapeWebPage" -> 1500;
+            case "searchImages" -> 1200;
+            case "searchWeb" -> 1800;
+            default -> 2500;
+        };
+        text = stripHtml(text);
+        text = compactImageUrls(toolName, text);
+        text = text.replaceAll("\\s+", " ").trim();
+        if (text.length() > maxLength) {
+            return text.substring(0, maxLength) + "... [工具结果过长，已压缩写入上下文]";
+        }
+        return text;
+    }
+
+    private String stripHtml(String text) {
+        if (!text.contains("<") || !text.contains(">")) {
+            return text;
+        }
+        return text
+                .replaceAll("(?is)<script.*?</script>", " ")
+                .replaceAll("(?is)<style.*?</style>", " ")
+                .replaceAll("(?s)<[^>]+>", " ");
+    }
+
+    private String compactImageUrls(String toolName, String text) {
+        if (!"searchImages".equals(toolName)) {
+            return text;
+        }
+        Matcher matcher = Pattern.compile("URL:\\s*(https?://\\S+)").matcher(text);
+        StringBuilder builder = new StringBuilder();
+        int count = 0;
+        while (matcher.find() && count < 5) {
+            count++;
+            builder.append("Image ").append(count).append(": ").append(matcher.group(1)).append("\n");
+        }
+        return count > 0 ? builder.toString() : text;
+    }
+
 }

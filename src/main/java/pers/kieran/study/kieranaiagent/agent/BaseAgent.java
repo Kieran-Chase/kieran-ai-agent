@@ -4,12 +4,15 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.retry.NonTransientAiException;
 import pers.kieran.study.kieranaiagent.agent.model.AgentState;
 import cn.hutool.core.util.StrUtil;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -135,12 +138,32 @@ public abstract class BaseAgent {
                     int stepNumber = i + 1;
                     currentStep = stepNumber;
                     log.info("Executing step {}/{}", stepNumber, maxSteps);
-                    // 单步执行
-                    String stepResult = step();
-                    String result = "Step " + stepNumber + ": " + stepResult;
-                    results.add(result);
-                    // 输出当前每一步的结果到 SSE
-                    sseEmitter.send(result);
+                    try {
+                        // 单步执行
+                        String stepResult = step();
+                        String result = "Step " + stepNumber + ": " + stepResult;
+                        results.add(result);
+                        // 输出当前每一步的结果到 SSE
+                        sseEmitter.send(result);
+                    } catch (NonTransientAiException e) {
+                        state = AgentState.ERROR;
+                        String errorMessage = "AI 工具调用参数格式异常，任务已终止：" + e.getMessage();
+                        log.error(errorMessage, e);
+                        sendStepErrorAndComplete(sseEmitter, stepNumber, errorMessage);
+                        return;
+                    } catch (ResourceAccessException e) {
+                        state = AgentState.ERROR;
+                        String errorMessage = "AI 服务响应超时或网络异常，任务已终止。请稍后重试，或减少任务范围后再试。";
+                        log.error(errorMessage, e);
+                        sendStepErrorAndComplete(sseEmitter, stepNumber, errorMessage);
+                        return;
+                    } catch (RestClientException e) {
+                        state = AgentState.ERROR;
+                        String errorMessage = "AI 服务返回异常，任务已终止。请稍后重试，或减少工具调用次数后再试。";
+                        log.error(errorMessage, e);
+                        sendStepErrorAndComplete(sseEmitter, stepNumber, errorMessage);
+                        return;
+                    }
                 }
                 // 检查是否超出步骤限制
                 if (currentStep >= maxSteps) {
@@ -187,6 +210,15 @@ public abstract class BaseAgent {
      *
      * @return
      */
+    private void sendStepErrorAndComplete(SseEmitter sseEmitter, int stepNumber, String errorMessage) {
+        try {
+            sseEmitter.send("Step " + stepNumber + ": " + errorMessage);
+            sseEmitter.complete();
+        } catch (IOException ex) {
+            sseEmitter.completeWithError(ex);
+        }
+    }
+
     public abstract String step();
 
     /**

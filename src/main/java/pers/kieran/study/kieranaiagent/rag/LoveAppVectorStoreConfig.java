@@ -2,6 +2,7 @@ package pers.kieran.study.kieranaiagent.rag;
 
 
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
@@ -20,6 +21,7 @@ import java.util.List;
 /**
  * 恋爱大师向量数据库配置(初始化基于内存的向量数据库Bean)
  */
+@Slf4j
 @Configuration
 public class LoveAppVectorStoreConfig {
     @Resource

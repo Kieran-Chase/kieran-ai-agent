@@ -8,6 +8,7 @@ package pers.kieran.study.kieranaiagent.agent;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * ReAct (Reasoning and Acting) 模式的代理抽象类
@@ -15,6 +16,7 @@ import lombok.EqualsAndHashCode;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
+@Slf4j
 public abstract class ReActAgent extends BaseAgent {
 
     /**
@@ -38,16 +40,10 @@ public abstract class ReActAgent extends BaseAgent {
      */
     @Override
     public String step() {
-        try {
-            boolean shouldAct = think();
-            if (!shouldAct) {
-                return "思考完成 - 无需行动";
-            }
-            return act();
-        } catch (Exception e) {
-            // 记录异常日志
-            e.printStackTrace();
-            return "步骤执行失败: " + e.getMessage();
+        boolean shouldAct = think();
+        if (!shouldAct) {
+            return "思考完成 - 无需行动";
         }
+        return act();
     }
 }

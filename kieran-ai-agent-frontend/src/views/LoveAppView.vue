@@ -1,9 +1,9 @@
 <template>
   <ChatRoom
-    title="AI 恋爱大师"
-    subtitle="Love App"
-    welcomeTitle="欢迎来到恋爱咨询聊天室"
-    welcomeText="你可以描述当前关系、聊天困惑或约会问题，AI 会实时给出建议。"
+    title="AI 嘴替教练"
+    subtitle="Reply Coach"
+    welcomeTitle="欢迎来到嘴替教练聊天室"
+    welcomeText="把你想说但不好开口的话、聊天场景或尴尬处境发给我，我帮你生成体面又好用的表达。"
     :chat-id="chatId"
     :create-sse-url="createSseUrl"
   />
@@ -11,12 +11,12 @@
 
 <script setup>
 import ChatRoom from '../components/ChatRoom.vue'
-import { createLoveAppSseUrl } from '../api/chat'
+import { createReplyCoachSseUrl } from '../api/chat'
 import { createChatId } from '../utils/chatId'
 
 const chatId = createChatId()
 
 function createSseUrl(message) {
-  return createLoveAppSseUrl(message, chatId)
+  return createReplyCoachSseUrl(message, chatId)
 }
 </script>

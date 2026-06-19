@@ -164,8 +164,8 @@ button:not(:disabled):hover {
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
 }
 
-.app-card.love {
-  background: linear-gradient(135deg, #ff6aa2, #a855f7);
+.app-card.reply {
+  background: linear-gradient(135deg, #14b8a6, #6366f1);
 }
 
 .app-card.agent {

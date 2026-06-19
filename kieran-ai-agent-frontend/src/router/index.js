@@ -16,7 +16,7 @@ const router = createRouter({
       path: '/love-app',
       name: 'love-app',
       component: LoveAppView,
-      meta: { title: 'AI 恋爱大师' },
+      meta: { title: 'AI 嘴替教练' },
     },
     {
       path: '/manus',

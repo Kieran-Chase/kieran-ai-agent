@@ -6,11 +6,11 @@
       <p class="hero-desc">选择你想体验的智能应用，开启实时流式对话。</p>
 
       <div class="app-grid">
-        <RouterLink class="app-card love" to="/love-app">
-          <span class="app-icon">💗</span>
+        <RouterLink class="app-card reply" to="/love-app">
+          <span class="app-icon">💬</span>
           <div>
-            <h2>AI 恋爱大师</h2>
-            <p>情感分析、关系建议与聊天陪伴。</p>
+            <h2>AI 嘴替教练</h2>
+            <p>拒绝、催促、道歉、谈判、职场回复，一键生成体面表达。</p>
           </div>
           <strong>进入 →</strong>
         </RouterLink>

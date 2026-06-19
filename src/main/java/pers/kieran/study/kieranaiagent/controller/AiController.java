@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pers.kieran.study.kieranaiagent.agent.KieranManus;
 import pers.kieran.study.kieranaiagent.app.LoveApp;
+import pers.kieran.study.kieranaiagent.app.ReplyCoachApp;
 import pers.kieran.study.kieranaiagent.constant.FileConstant;
 import pers.kieran.study.kieranaiagent.tools.AITools;
 import pers.kieran.study.kieranaiagent.tools.UnsplashSearchTool;
@@ -40,6 +41,9 @@ public class AiController {
 
     @Resource
     private LoveApp loveApp;
+
+    @Resource
+    private ReplyCoachApp replyCoachApp;
 
     @Resource
     private ToolCallback[] allTools;
@@ -88,6 +92,22 @@ public class AiController {
     @GetMapping(value="/love_app/chat/sse",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> doChatWithLoveAppSSE(String message,String chatId){
         return loveApp.doChatByStream(message,chatId);
+    }
+
+    /**
+     * SSE ???? AI ??????
+     */
+    @GetMapping(value = "/reply_coach/chat/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> doChatWithReplyCoachSSE(String message, String chatId) {
+        return replyCoachApp.doChatByStream(message, chatId);
+    }
+
+    /**
+     * ???? AI ??????
+     */
+    @GetMapping("/reply_coach/chat/sync")
+    public String doChatWithReplyCoachSync(String message, String chatId) {
+        return replyCoachApp.doChat(message, chatId);
     }
 
     /**
